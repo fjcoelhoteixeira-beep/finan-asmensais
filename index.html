@@ -270,26 +270,41 @@
     };
 
 async function updateAll(deveSalvar = true) {
+    // 1. Capturar valores dos inputs
     dataStore.ordenado = parseFloat(document.getElementById('ordenado').value) || 0;
     dataStore.poupancaPerc = parseFloat(document.getElementById('poupancaPerc').value) || 0;
     
-    // ... (mantém os teus cálculos de UI aqui: totalGastos, livre, etc.) ...
-    
-    // Atualização da UI (mantém o que já tens)
+    // 2. Cálculos
+    const totalGastos = dataStore.despesas.reduce((a, b) => a + b.valor, 0);
+    const poupancaVal = (dataStore.ordenado * dataStore.poupancaPerc) / 100;
+    const livre = dataStore.ordenado - poupancaVal - totalGastos;
+    const perc = dataStore.ordenado > 0 ? Math.round((totalGastos / dataStore.ordenado) * 100) : 0;
+
+    // 3. Atualizar UI
     document.getElementById('valTotalDespesas').innerText = totalGastos.toLocaleString('pt-PT', {minimumFractionDigits: 2}) + "€";
     document.getElementById('valLivre').innerText = livre.toLocaleString('pt-PT', {minimumFractionDigits: 2}) + "€";
     document.getElementById('valPoupancaEuro').innerText = poupancaVal.toLocaleString('pt-PT', {minimumFractionDigits: 2}) + "€";
     document.getElementById('percGasto').innerText = perc + "%";
+    document.getElementById('badgeItens').innerText = dataStore.despesas.length + " itens";
 
+    // 4. Salvar na Cloud
     if (deveSalvar) {
-        // MÉTODO INFALÍVEL: Enviar como parâmetro de URL (GET)
-        const dataParaGravar = encodeURIComponent(JSON.stringify(dataStore));
-        const urlDeGravar = `${SCRIPT_URL}?save=${dataParaGravar}`;
+        console.log("A enviar dados para a Cloud...");
+        
+        // Criamos o URL com os dados no parâmetro 'save'
+        const strData = JSON.stringify(dataStore);
+        const finalUrl = `${SCRIPT_URL}?save=${encodeURIComponent(strData)}`;
 
-        // Criamos um elemento invisível (imagem) para forçar o pedido sem erro de CORS
-        const img = new Image();
-        img.src = urlDeGravar; 
-        console.log("A enviar para a Cloud...");
+        // O FETCH em modo 'no-cors' ignora os bloqueios do browser
+        fetch(finalUrl, {
+            method: 'GET',
+            mode: 'no-cors',
+            keepalive: true // Garante que o pedido termina mesmo que feches a aba rápido
+        }).then(() => {
+            console.log("Pedido enviado com sucesso!");
+        }).catch(err => {
+            console.error("Erro no envio:", err);
+        });
     }
     
     updateChart(totalGastos, poupancaVal, livre);
@@ -398,5 +413,4 @@ async function updateAll(deveSalvar = true) {
     }
 </script>
 </body>
-
 </html>
