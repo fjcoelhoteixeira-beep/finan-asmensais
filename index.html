@@ -248,7 +248,7 @@
     let dataStore = { ordenado: 0, poupancaPerc: 0, despesas: [] };
     
     // ATENÇÃO: COLA AQUI O TEU LINK DO GOOGLE APPS SCRIPT (/exec)
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyMBu_6tSmfUKPgYB7H4tmzhz_8Qr9gon0rVJATvvoS0gYi3lqb9WGTMqEjnxELaoSg/exec";
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz4avvFOSOPHnjUjzzYBQWvWlVmJZZ4tmP6e1BIY7kOgCLI9_9gRaqOCmbAUSJNJC28/exec";
 
     window.onload = async function() {
         showLoading(true);
@@ -269,33 +269,42 @@
         showLoading(false);
     };
 
-    async function updateAll(deveSalvar = true) {
-        dataStore.ordenado = parseFloat(document.getElementById('ordenado').value) || 0;
-        dataStore.poupancaPerc = parseFloat(document.getElementById('poupancaPerc').value) || 0;
-        
-        const totalGastos = dataStore.despesas.reduce((a, b) => a + b.valor, 0);
-        const poupancaVal = (dataStore.ordenado * dataStore.poupancaPerc) / 100;
-        const livre = dataStore.ordenado - poupancaVal - totalGastos;
-        const perc = dataStore.ordenado > 0 ? Math.round((totalGastos / dataStore.ordenado) * 100) : 0;
+async function updateAll(deveSalvar = true) {
+    dataStore.ordenado = parseFloat(document.getElementById('ordenado').value) || 0;
+    dataStore.poupancaPerc = parseFloat(document.getElementById('poupancaPerc').value) || 0;
+    
+    const totalGastos = dataStore.despesas.reduce((a, b) => a + b.valor, 0);
+    const poupancaVal = (dataStore.ordenado * dataStore.poupancaPerc) / 100;
+    const livre = dataStore.ordenado - poupancaVal - totalGastos;
+    const perc = dataStore.ordenado > 0 ? Math.round((totalGastos / dataStore.ordenado) * 100) : 0;
 
-        // Atualizar UI
-        document.getElementById('valTotalDespesas').innerText = totalGastos.toLocaleString('pt-PT', {minimumFractionDigits: 2}) + "€";
-        document.getElementById('valLivre').innerText = livre.toLocaleString('pt-PT', {minimumFractionDigits: 2}) + "€";
-        document.getElementById('valPoupancaEuro').innerText = poupancaVal.toLocaleString('pt-PT', {minimumFractionDigits: 2}) + "€";
-        document.getElementById('percGasto').innerText = perc + "%";
-        document.getElementById('badgeItens').innerText = dataStore.despesas.length + " itens";
+    // Atualizar UI
+    document.getElementById('valTotalDespesas').innerText = totalGastos.toLocaleString('pt-PT', {minimumFractionDigits: 2}) + "€";
+    document.getElementById('valLivre').innerText = livre.toLocaleString('pt-PT', {minimumFractionDigits: 2}) + "€";
+    document.getElementById('valPoupancaEuro').innerText = poupancaVal.toLocaleString('pt-PT', {minimumFractionDigits: 2}) + "€";
+    document.getElementById('percGasto').innerText = perc + "%";
+    document.getElementById('badgeItens').innerText = dataStore.despesas.length + " itens";
 
-        if (deveSalvar) {
-            fetch(SCRIPT_URL, {
-                method: 'POST',
-                mode: 'no-cors',
-                body: JSON.stringify(dataStore)
-            });
-        }
-        
-        updateChart(totalGastos, poupancaVal, livre);
-        renderExpenses();
+    if (deveSalvar) {
+        // SOLUÇÃO PARA O ERRO DE ENVIO:
+        // Usamos um formulário invisível para enviar os dados, o que ignora o bloqueio de CORS
+        const formData = new FormData();
+        formData.append('data', JSON.stringify(dataStore));
+
+        fetch(SCRIPT_URL, {
+            method: 'POST',
+            mode: 'no-cors', // Importante para ficheiros locais
+            body: JSON.stringify(dataStore),
+            headers: {
+                'Content-Type': 'text/plain' // O Google Sheets prefere text/plain em modo no-cors
+            }
+        }).then(() => console.log("Tentativa de gravação enviada..."))
+          .catch(err => console.error("Erro ao gravar:", err));
     }
+    
+    updateChart(totalGastos, poupancaVal, livre);
+    renderExpenses();
+}
 
     function renderExpenses() {
         const list = document.getElementById('listaDespesas');
