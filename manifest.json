@@ -1,6 +1,6 @@
 {
   "name": "Finanças Pro Elite",
-  "short_name": "Finanças",
+  "short_name": "Finanças Mês",
   "description": "Gestão Financeira Cloud",
   "start_url": "index.html",
   "display": "standalone",
@@ -14,4 +14,5 @@
       "purpose": "any maskable"
     }
   ]
+
 }
