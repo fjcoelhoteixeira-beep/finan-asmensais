@@ -1,0 +1,51 @@
+// 1. COPIA O ID DA TUA FOLHA DE CÁLCULO E COLA ABAIXO
+// O ID está no link da folha: /d/ESTE_CODIGO_AQUI/edit
+var SPREADSHEET_ID = "1W2wFCm0Uxnpkht4OKLjrgtaQEam_E1LHfhk_vb8foBQ"; 
+
+function doGet() {
+  return HtmlService.createHtmlOutputFromFile('index')
+    .setTitle('Finanças Pro Cloud')
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+// Verifica o login acedendo à folha pelo ID
+function verificarLogin(user, pass) {
+  try {
+    var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    var sheet = ss.getSheetByName("Users");
+    if (!sheet) return false; 
+    
+    var dados = sheet.getDataRange().getValues();
+    for (var i = 1; i < dados.length; i++) {
+      if (dados[i][0].toString().toLowerCase() == user.toString().toLowerCase() && 
+          dados[i][1].toString() == pass.toString()) {
+        return true;
+      }
+    }
+    return false;
+  } catch(e) {
+    return false; // Se houver erro de permissão ou ID errado
+  }
+}
+
+// Grava os dados na Cloud (Sheets)
+function syncAppData(dadosCompletos) {
+  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  var sheet = ss.getSheetByName("Cloud_Storage");
+  if (!sheet) {
+    sheet = ss.insertSheet("Cloud_Storage");
+    sheet.hideSheet(); 
+  }
+  sheet.getRange("A1").setValue(JSON.stringify(dadosCompletos));
+  return "Sincronizado";
+}
+
+// Lê os dados da Cloud para a App
+function loadAppData() {
+  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  var sheet = ss.getSheetByName("Cloud_Storage");
+  if (!sheet) return null;
+  var data = sheet.getRange("A1").getValue();
+  return data ? JSON.parse(data) : null;
+}

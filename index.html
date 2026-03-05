@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Finanças Pro Elite Cloud</title>
+    
+    <link rel="icon" type="image/png" href="icon.png">
+    <link rel="manifest" href="manifest.json">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    <style>
+        :root {
+            --orange: #e67e22;
+            --orange-hover: #d35400;
+            --bg: #050505;
+            --card-bg: rgba(22, 22, 24, 0.98);
+            --border-color: rgba(255, 255, 255, 0.1);
+            --text-main: #ffffff;
+            --text-sec: #888888;
+            --green: #2ecc71;
+            --red: #e74c3c;
+            --blue: #3498db;
+        }
+
+        body {
+            background-color: var(--bg);
+            background-image: radial-gradient(circle at top right, #1a1a1a, #050505);
+            color: var(--text-main);
+            font-family: 'Inter', -apple-system, sans-serif;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .app-container {
+            max-width: 1300px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 25px;
+        }
+
+        @media (min-width: 992px) {
+            .app-container {
+                grid-template-columns: 380px 1fr;
+            }
+        }
+
+        .glass-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border-color);
+            border-radius: 30px;
+            padding: 30px;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+            transition: all 0.3s ease;
+        }
+
+        .input-group-custom { margin-bottom: 20px; }
+        .label-premium { 
+            font-size: 0.7rem; 
+            font-weight: 800; 
+            color: var(--text-sec); 
+            text-transform: uppercase; 
+            letter-spacing: 1.2px;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .input-premium {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid #333;
+            border-radius: 15px;
+            color: white;
+            padding: 12px 18px;
+            width: 100%;
+            font-weight: 600;
+            outline: none;
+            transition: 0.3s;
+        }
+
+        .input-premium:focus {
+            border-color: var(--orange);
+            background: rgba(255,255,255,0.06);
+        }
+
+        .btn-main {
+            background: linear-gradient(135deg, var(--orange), var(--orange-hover));
+            color: white;
+            border: none;
+            padding: 15px;
+            border-radius: 18px;
+            font-weight: 700;
+            width: 100%;
+            transition: 0.3s;
+            text-transform: uppercase;
+        }
+
+        .btn-main:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(230,126,34,0.3); }
+
+        .expense-item {
+            background: rgba(255,255,255,0.02);
+            border: 1px solid var(--border-color);
+            border-radius: 22px;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            transition: 0.3s;
+        }
+
+        .expense-item:hover {
+            border-color: var(--orange);
+            background: rgba(255,255,255,0.05);
+        }
+
+        .icon-wrapper {
+            width: 55px;
+            height: 55px;
+            background: rgba(230, 126, 34, 0.12);
+            border-radius: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--orange);
+            font-size: 1.4rem;
+            margin-right: 20px;
+        }
+
+        .chart-container {
+            position: relative;
+            width: 210px;
+            margin: 0 auto;
+        }
+
+        .chart-center-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
+
+        .fab {
+            position: fixed;
+            bottom: 35px;
+            right: 35px;
+            width: 70px;
+            height: 70px;
+            background: var(--orange);
+            border-radius: 24px;
+            color: white;
+            border: none;
+            font-size: 28px;
+            box-shadow: 0 15px 35px rgba(230,126,34,0.4);
+            z-index: 100;
+            transition: 0.3s;
+        }
+
+        .fab:hover { transform: scale(1.1) rotate(90deg); }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+        }
+    </style>
+</head>
+<body>
+
+<div id="loading" class="loading-overlay">
+    <div class="spinner-border text-warning" role="status"></div>
+</div>
+
+<div id="appContent">
+    <div class="app-container">
+        <aside>
+            <div class="glass-card text-center mb-4">
+                <div class="label-premium mb-4">Resumo Disponível</div>
+                <div class="chart-container">
+                    <canvas id="myChart"></canvas>
+                    <div class="chart-center-text">
+                        <div id="percGasto" style="font-size: 1.8rem; font-weight: 900;">0%</div>
+                        <div class="label-premium" style="font-size: 0.5rem;">Utilizado</div>
+                    </div>
+                </div>
+
+                <div class="row mt-5 text-start g-3">
+                    <div class="col-6">
+                        <div class="label-premium">Livre</div>
+                        <div id="valLivre" class="fw-bold" style="font-size: 1.2rem; color: var(--green);">0.00€</div>
+                    </div>
+                    <div class="col-6 text-end">
+                        <div class="label-premium">Gastos</div>
+                        <div id="valTotalDespesas" class="fw-bold" style="font-size: 1.2rem; color: var(--red);">0.00€</div>
+                    </div>
+                    <div class="col-12 pt-3 border-top border-secondary">
+                        <div class="label-premium">Total Poupança</div>
+                        <div id="valPoupancaEuro" class="fw-bold" style="font-size: 1.2rem; color: #3498db;">0.00€</div>
+                        <div class="label-premium" style="font-size: 0.5rem; opacity: 0.6;">Valor retido este mês</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass-card">
+                <div class="input-group-custom">
+                    <span class="label-premium">O Teu Ordenado Mensal</span>
+                    <input type="number" id="ordenado" step="0.01" class="input-premium" oninput="updateAll()">
+                </div>
+                <div class="input-group-custom">
+                    <span class="label-premium">Percentagem de Poupança %</span>
+                    <input type="number" id="poupancaPerc" step="0.1" class="input-premium" oninput="updateAll()">
+                </div>
+                
+                <button class="btn-main mt-2" onclick="exportToExcel()" style="background: linear-gradient(135deg, #27ae60, #1e8449);">
+                    <i class="fa-solid fa-file-excel me-2"></i>Exportar Excel
+                </button>
+                <button class="btn btn-link text-secondary w-100 mt-3 btn-sm text-decoration-none" onclick="location.reload()">
+                    <i class="fa-solid fa-rotate me-2"></i>Sincronizar Agora
+                </button>
+            </div>
+        </aside>
+
+        <main>
+            <div class="glass-card h-100">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h5 class="fw-bold m-0">Minhas Despesas</h5>
+                    <span id="badgeItens" class="badge rounded-pill bg-dark border border-secondary px-3">0 itens</span>
+                </div>
+                <div id="listaDespesas"></div>
+            </div>
+        </main>
+    </div>
+    <button class="fab" onclick="addExpense()"><i class="fa-solid fa-plus"></i></button>
+</div>
+
+<script>
+    let myChart;
+    let dataStore = { ordenado: 0, poupancaPerc: 0, despesas: [] };
+    
+    // ATENÇÃO: COLA AQUI O TEU LINK DO GOOGLE APPS SCRIPT (/exec)
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyMBu_6tSmfUKPgYB7H4tmzhz_8Qr9gon0rVJATvvoS0gYi3lqb9WGTMqEjnxELaoSg/exec";
+
+    window.onload = async function() {
+        showLoading(true);
+        initChart();
+        try {
+            const response = await fetch(SCRIPT_URL);
+            const result = await response.json();
+            
+            if (result) {
+                dataStore = result;
+                document.getElementById('ordenado').value = dataStore.ordenado || 0;
+                document.getElementById('poupancaPerc').value = dataStore.poupancaPerc || 0;
+                updateAll(false);
+            }
+        } catch (e) {
+            console.error("Erro ao carregar dados da Cloud:", e);
+        }
+        showLoading(false);
+    };
+
+    async function updateAll(deveSalvar = true) {
+        dataStore.ordenado = parseFloat(document.getElementById('ordenado').value) || 0;
+        dataStore.poupancaPerc = parseFloat(document.getElementById('poupancaPerc').value) || 0;
+        
+        const totalGastos = dataStore.despesas.reduce((a, b) => a + b.valor, 0);
+        const poupancaVal = (dataStore.ordenado * dataStore.poupancaPerc) / 100;
+        const livre = dataStore.ordenado - poupancaVal - totalGastos;
+        const perc = dataStore.ordenado > 0 ? Math.round((totalGastos / dataStore.ordenado) * 100) : 0;
+
+        // Atualizar UI
+        document.getElementById('valTotalDespesas').innerText = totalGastos.toLocaleString('pt-PT', {minimumFractionDigits: 2}) + "€";
+        document.getElementById('valLivre').innerText = livre.toLocaleString('pt-PT', {minimumFractionDigits: 2}) + "€";
+        document.getElementById('valPoupancaEuro').innerText = poupancaVal.toLocaleString('pt-PT', {minimumFractionDigits: 2}) + "€";
+        document.getElementById('percGasto').innerText = perc + "%";
+        document.getElementById('badgeItens').innerText = dataStore.despesas.length + " itens";
+
+        if (deveSalvar) {
+            fetch(SCRIPT_URL, {
+                method: 'POST',
+                mode: 'no-cors',
+                body: JSON.stringify(dataStore)
+            });
+        }
+        
+        updateChart(totalGastos, poupancaVal, livre);
+        renderExpenses();
+    }
+
+    function renderExpenses() {
+        const list = document.getElementById('listaDespesas');
+        list.innerHTML = dataStore.despesas.map(d => `
+            <div class="expense-item">
+                <div class="d-flex align-items-center">
+                    <div class="icon-wrapper"><i class="fa-solid ${getSmartIcon(d.nome)}"></i></div>
+                    <div onclick="editName(${d.id})" style="cursor:pointer">
+                        <div class="fw-bold" style="font-size:1.1rem">${d.nome}</div>
+                        <div class="label-premium" style="font-size:0.6rem">Mensal</div>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center">
+                    <input type="number" step="0.01" class="input-premium" 
+                        value="${d.valor.toFixed(2)}" 
+                        onchange="editValue(${d.id}, this.value)" 
+                        style="width: 105px; background: rgba(0,0,0,0.2);">
+                    <i class="fa-solid fa-trash-can ms-3 text-secondary" style="cursor:pointer" onclick="removeExpense(${d.id})"></i>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function getSmartIcon(nome) {
+        const n = nome.toLowerCase();
+        if(n.includes('casa') || n.includes('renda')) return 'fa-house-user';
+        if(n.includes('carro') || n.includes('via verde')) return 'fa-car';
+        if(n.includes('mota')) return 'fa-motorcycle';
+        if(n.includes('net') || n.includes('tv') || n.includes('stream')) return 'fa-wifi';
+        if(n.includes('luz') || n.includes('agua') || n.includes('edp')) return 'fa-plug';
+        if(n.includes('comida') || n.includes('super') || n.includes('mercado')) return 'fa-cart-shopping';
+        if(n.includes('seguro')) return 'fa-shield-heart';
+        if(n.includes('ginasio') || n.includes('sport')) return 'fa-dumbbell';
+        return 'fa-euro-sign';
+    }
+
+    function initChart() {
+        const ctx = document.getElementById('myChart').getContext('2d');
+        myChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                datasets: [{
+                    data: [0, 0, 1],
+                    backgroundColor: ['#e74c3c', '#e67e22', '#2ecc71'],
+                    borderWidth: 0, cutout: '88%', borderRadius: 15
+                }]
+            },
+            options: { plugins: { legend: { display: false } }, animation: { duration: 1000 } }
+        });
+    }
+
+    function updateChart(g, p, l) {
+        if(!myChart) return;
+        myChart.data.datasets[0].data = [g, p, l < 0 ? 0 : l];
+        myChart.update();
+    }
+
+    function addExpense() {
+        const n = prompt("Nome da nova despesa:");
+        if(n) { dataStore.despesas.push({id: Date.now(), nome: n, valor: 0.00}); updateAll(); }
+    }
+
+    function editValue(id, v) {
+        const i = dataStore.despesas.findIndex(d => d.id === id);
+        dataStore.despesas[i].valor = parseFloat(v) || 0;
+        updateAll();
+    }
+
+    function editName(id) {
+        const i = dataStore.despesas.findIndex(d => d.id === id);
+        const n = prompt("Novo nome:", dataStore.despesas[i].nome);
+        if(n) { dataStore.despesas[i].nome = n; updateAll(); }
+    }
+
+    function removeExpense(id) {
+        if(confirm("Deseja apagar esta despesa?")) {
+            dataStore.despesas = dataStore.despesas.filter(d => d.id !== id);
+            updateAll();
+        }
+    }
+
+    function exportToExcel() {
+        const rows = [
+            ["EXTRATO FINANCEIRO CLOUD"],
+            ["Data", new Date().toLocaleDateString()],
+            [""],
+            ["ITEM", "VALOR (€)"],
+            ["Ordenado", dataStore.ordenado],
+            ["Poupança (%)", dataStore.poupancaPerc],
+            ["Poupança Total (€)", (dataStore.ordenado * dataStore.poupancaPerc) / 100],
+            ["---", "---"]
+        ];
+        dataStore.despesas.forEach(d => rows.push([d.nome, d.valor]));
+        const ws = XLSX.utils.aoa_to_sheet(rows);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Finanças");
+        XLSX.writeFile(wb, "Financas_Cloud.xlsx");
+    }
+
+    function showLoading(show) {
+        document.getElementById('loading').style.display = show ? 'flex' : 'none';
+    }
+</script>
+</body>
+</html>
