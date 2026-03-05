@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Finanças Pro Elite Cloud</title>
     
-    <link rel="icon" type="image/png" href="icon.png">
     <link rel="manifest" href="manifest.json">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -23,7 +22,6 @@
             --text-sec: #888888;
             --green: #2ecc71;
             --red: #e74c3c;
-            --blue: #3498db;
         }
 
         body {
@@ -204,9 +202,9 @@
                         <div id="valTotalDespesas" class="fw-bold" style="font-size: 1.2rem; color: var(--red);">0.00€</div>
                     </div>
                     <div class="col-12 pt-3 border-top border-secondary">
-                        <div class="label-premium">Total Poupança</div>
-                        <div id="valPoupancaEuro" class="fw-bold" style="font-size: 1.2rem; color: #3498db;">0.00€</div>
-                        <div class="label-premium" style="font-size: 0.5rem; opacity: 0.6;">Valor retido este mês</div>
+                        <div class="label-premium">Média Diária</div>
+                        <div id="valMedia" class="fw-bold" style="font-size: 1.2rem; color: #f1c40f;">0.00€</div>
+                        <div class="label-premium" style="font-size: 0.5rem; opacity: 0.6;">Até ao fim do mês</div>
                     </div>
                 </div>
             </div>
@@ -248,8 +246,9 @@
     let dataStore = { ordenado: 0, poupancaPerc: 0, despesas: [] };
     
     // ATENÇÃO: COLA AQUI O TEU LINK DO GOOGLE APPS SCRIPT (/exec)
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx5XU4EIb7Uq5QPpRy8G-T6mElM5z02B2MI_x3Yg_QtEyct598SC14fNwuo_jhtAOf7/exec";
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx4EY11zMNKajez2-7PrzK7hP0TSzW_FOGQJZeLRx3oeqavWhl2ER8-xFzIUwM6Qox1/exec";
 
+    // CARREGAMENTO AUTOMÁTICO AO INICIAR
     window.onload = async function() {
         showLoading(true);
         initChart();
@@ -269,44 +268,39 @@
         showLoading(false);
     };
 
-async function updateAll(deveSalvar = true) {
-    try {
-        // 1. Capturar valores dos inputs
+    async function updateAll(deveSalvar = true) {
         dataStore.ordenado = parseFloat(document.getElementById('ordenado').value) || 0;
         dataStore.poupancaPerc = parseFloat(document.getElementById('poupancaPerc').value) || 0;
         
-        // 2. Cálculos Cruciais (Sem isto o layout não mexe)
         const totalGastos = dataStore.despesas.reduce((a, b) => a + b.valor, 0);
         const poupancaVal = (dataStore.ordenado * dataStore.poupancaPerc) / 100;
         const livre = dataStore.ordenado - poupancaVal - totalGastos;
         const perc = dataStore.ordenado > 0 ? Math.round((totalGastos / dataStore.ordenado) * 100) : 0;
 
-        // 3. Atualizar a Interface (Texto e Cores)
+        const hoje = new Date();
+        const ultimoDia = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).getDate();
+        const diasRestantes = (ultimoDia - hoje.getDate()) + 1;
+        const media = livre > 0 ? (livre / diasRestantes) : 0;
+
         document.getElementById('valTotalDespesas').innerText = totalGastos.toLocaleString('pt-PT', {minimumFractionDigits: 2}) + "€";
         document.getElementById('valLivre').innerText = livre.toLocaleString('pt-PT', {minimumFractionDigits: 2}) + "€";
-        document.getElementById('valPoupancaEuro').innerText = poupancaVal.toLocaleString('pt-PT', {minimumFractionDigits: 2}) + "€";
+        document.getElementById('valMedia').innerText = media.toLocaleString('pt-PT', {minimumFractionDigits: 2}) + "€";
         document.getElementById('percGasto').innerText = perc + "%";
         document.getElementById('badgeItens').innerText = dataStore.despesas.length + " itens";
 
-        // 4. Salvar na Cloud (O método que não bloqueia o PC)
-        if (deveSalvar && SCRIPT_URL) {
-            const strData = JSON.stringify(dataStore);
-            const finalUrl = `${SCRIPT_URL}?save=${encodeURIComponent(strData)}&t=${Date.now()}`;
-
-            fetch(finalUrl, { 
-                method: 'GET',
-                mode: 'no-cors'
-            }).catch(e => console.log("Erro ao enviar, guardado localmente"));
+        if (deveSalvar) {
+            // Sincronização Automática com o Sheets
+            fetch(SCRIPT_URL, {
+                method: 'POST',
+                mode: 'no-cors',
+                body: JSON.stringify(dataStore)
+            });
         }
         
-        // 5. Atualizar Gráfico e Lista (O que faz a App aparecer)
         updateChart(totalGastos, poupancaVal, livre);
         renderExpenses();
-        
-    } catch (error) {
-        console.error("Erro no updateAll:", error);
     }
-}
+
     function renderExpenses() {
         const list = document.getElementById('listaDespesas');
         list.innerHTML = dataStore.despesas.map(d => `
@@ -390,12 +384,11 @@ async function updateAll(deveSalvar = true) {
     function exportToExcel() {
         const rows = [
             ["EXTRATO FINANCEIRO CLOUD"],
-            ["Data", new Date().toLocaleDateString()],
+            ["Data de Exportação", new Date().toLocaleDateString()],
             [""],
             ["ITEM", "VALOR (€)"],
             ["Ordenado", dataStore.ordenado],
             ["Poupança (%)", dataStore.poupancaPerc],
-            ["Poupança Total (€)", (dataStore.ordenado * dataStore.poupancaPerc) / 100],
             ["---", "---"]
         ];
         dataStore.despesas.forEach(d => rows.push([d.nome, d.valor]));
@@ -410,5 +403,4 @@ async function updateAll(deveSalvar = true) {
     }
 </script>
 </body>
-
 </html>
