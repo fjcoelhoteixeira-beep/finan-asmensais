@@ -274,39 +274,38 @@ async function updateAll(deveSalvar = true) {
     dataStore.ordenado = parseFloat(document.getElementById('ordenado').value) || 0;
     dataStore.poupancaPerc = parseFloat(document.getElementById('poupancaPerc').value) || 0;
     
-    // 2. Cálculos
+    // 2. Cálculos (Estavam em falta no bloco anterior)
     const totalGastos = dataStore.despesas.reduce((a, b) => a + b.valor, 0);
     const poupancaVal = (dataStore.ordenado * dataStore.poupancaPerc) / 100;
     const livre = dataStore.ordenado - poupancaVal - totalGastos;
     const perc = dataStore.ordenado > 0 ? Math.round((totalGastos / dataStore.ordenado) * 100) : 0;
 
-    // 3. Atualizar UI
+    // 3. Atualizar a Interface (UI)
     document.getElementById('valTotalDespesas').innerText = totalGastos.toLocaleString('pt-PT', {minimumFractionDigits: 2}) + "€";
     document.getElementById('valLivre').innerText = livre.toLocaleString('pt-PT', {minimumFractionDigits: 2}) + "€";
     document.getElementById('valPoupancaEuro').innerText = poupancaVal.toLocaleString('pt-PT', {minimumFractionDigits: 2}) + "€";
     document.getElementById('percGasto').innerText = perc + "%";
     document.getElementById('badgeItens').innerText = dataStore.despesas.length + " itens";
 
-    // 4. Salvar na Cloud
+    // 4. Salvar na Cloud (O método que não bloqueia)
     if (deveSalvar) {
-        console.log("A enviar dados para a Cloud...");
-        
-        // Criamos o URL com os dados no parâmetro 'save'
         const strData = JSON.stringify(dataStore);
-        const finalUrl = `${SCRIPT_URL}?save=${encodeURIComponent(strData)}`;
+        // Usamos um parâmetro de tempo (&t=) para o browser não "viciar" no link
+        const finalUrl = `${SCRIPT_URL}?save=${encodeURIComponent(strData)}&t=${Date.now()}`;
 
-        // O FETCH em modo 'no-cors' ignora os bloqueios do browser
-        fetch(finalUrl, {
+        // O 'no-cors' permite que o ficheiro local envie os dados sem segurança a bloquear
+        fetch(finalUrl, { 
             method: 'GET',
             mode: 'no-cors',
-            keepalive: true // Garante que o pedido termina mesmo que feches a aba rápido
+            cache: 'no-cache'
         }).then(() => {
-            console.log("Pedido enviado com sucesso!");
+            console.log("Dados enviados para a nuvem.");
         }).catch(err => {
-            console.error("Erro no envio:", err);
+            console.log("Erro no envio, mas a App local continua a funcionar.");
         });
     }
     
+    // 5. Atualizar Gráfico e Lista
     updateChart(totalGastos, poupancaVal, livre);
     renderExpenses();
 }
