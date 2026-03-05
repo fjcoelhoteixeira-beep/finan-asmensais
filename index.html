@@ -270,44 +270,42 @@
     };
 
 async function updateAll(deveSalvar = true) {
-    // 1. Capturar valores dos inputs
-    dataStore.ordenado = parseFloat(document.getElementById('ordenado').value) || 0;
-    dataStore.poupancaPerc = parseFloat(document.getElementById('poupancaPerc').value) || 0;
-    
-    // 2. Cálculos (Estavam em falta no bloco anterior)
-    const totalGastos = dataStore.despesas.reduce((a, b) => a + b.valor, 0);
-    const poupancaVal = (dataStore.ordenado * dataStore.poupancaPerc) / 100;
-    const livre = dataStore.ordenado - poupancaVal - totalGastos;
-    const perc = dataStore.ordenado > 0 ? Math.round((totalGastos / dataStore.ordenado) * 100) : 0;
+    try {
+        // 1. Capturar valores dos inputs
+        dataStore.ordenado = parseFloat(document.getElementById('ordenado').value) || 0;
+        dataStore.poupancaPerc = parseFloat(document.getElementById('poupancaPerc').value) || 0;
+        
+        // 2. Cálculos Cruciais (Sem isto o layout não mexe)
+        const totalGastos = dataStore.despesas.reduce((a, b) => a + b.valor, 0);
+        const poupancaVal = (dataStore.ordenado * dataStore.poupancaPerc) / 100;
+        const livre = dataStore.ordenado - poupancaVal - totalGastos;
+        const perc = dataStore.ordenado > 0 ? Math.round((totalGastos / dataStore.ordenado) * 100) : 0;
 
-    // 3. Atualizar a Interface (UI)
-    document.getElementById('valTotalDespesas').innerText = totalGastos.toLocaleString('pt-PT', {minimumFractionDigits: 2}) + "€";
-    document.getElementById('valLivre').innerText = livre.toLocaleString('pt-PT', {minimumFractionDigits: 2}) + "€";
-    document.getElementById('valPoupancaEuro').innerText = poupancaVal.toLocaleString('pt-PT', {minimumFractionDigits: 2}) + "€";
-    document.getElementById('percGasto').innerText = perc + "%";
-    document.getElementById('badgeItens').innerText = dataStore.despesas.length + " itens";
+        // 3. Atualizar a Interface (Texto e Cores)
+        document.getElementById('valTotalDespesas').innerText = totalGastos.toLocaleString('pt-PT', {minimumFractionDigits: 2}) + "€";
+        document.getElementById('valLivre').innerText = livre.toLocaleString('pt-PT', {minimumFractionDigits: 2}) + "€";
+        document.getElementById('valPoupancaEuro').innerText = poupancaVal.toLocaleString('pt-PT', {minimumFractionDigits: 2}) + "€";
+        document.getElementById('percGasto').innerText = perc + "%";
+        document.getElementById('badgeItens').innerText = dataStore.despesas.length + " itens";
 
-    // 4. Salvar na Cloud (O método que não bloqueia)
-    if (deveSalvar) {
-        const strData = JSON.stringify(dataStore);
-        // Usamos um parâmetro de tempo (&t=) para o browser não "viciar" no link
-        const finalUrl = `${SCRIPT_URL}?save=${encodeURIComponent(strData)}&t=${Date.now()}`;
+        // 4. Salvar na Cloud (O método que não bloqueia o PC)
+        if (deveSalvar && SCRIPT_URL) {
+            const strData = JSON.stringify(dataStore);
+            const finalUrl = `${SCRIPT_URL}?save=${encodeURIComponent(strData)}&t=${Date.now()}`;
 
-        // O 'no-cors' permite que o ficheiro local envie os dados sem segurança a bloquear
-        fetch(finalUrl, { 
-            method: 'GET',
-            mode: 'no-cors',
-            cache: 'no-cache'
-        }).then(() => {
-            console.log("Dados enviados para a nuvem.");
-        }).catch(err => {
-            console.log("Erro no envio, mas a App local continua a funcionar.");
-        });
+            fetch(finalUrl, { 
+                method: 'GET',
+                mode: 'no-cors'
+            }).catch(e => console.log("Erro ao enviar, guardado localmente"));
+        }
+        
+        // 5. Atualizar Gráfico e Lista (O que faz a App aparecer)
+        updateChart(totalGastos, poupancaVal, livre);
+        renderExpenses();
+        
+    } catch (error) {
+        console.error("Erro no updateAll:", error);
     }
-    
-    // 5. Atualizar Gráfico e Lista
-    updateChart(totalGastos, poupancaVal, livre);
-    renderExpenses();
 }
     function renderExpenses() {
         const list = document.getElementById('listaDespesas');
@@ -412,4 +410,5 @@ async function updateAll(deveSalvar = true) {
     }
 </script>
 </body>
+
 </html>
